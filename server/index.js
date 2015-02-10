@@ -98,6 +98,19 @@ api.get('/torrents/:infoHash/files', function (req, res) {
   }).join('\n'));
 });
 
+api.get('/iframe/:infoHash', function (req, res) {
+  var torrent = store.get(req.params.infoHash);
+  if (!torrent) {
+    return res.send(404);
+  }
+
+  var file = torrent.files[0].path;
+  if (typeof req.query.ffmpeg !== 'undefined') {
+    file = file + '?ffmpeg=' + req.query.ffmpeg
+  }
+  res.send('<link href="//vjs.zencdn.net/4.11/video-js.css" rel="stylesheet"><script src="//vjs.zencdn.net/4.11/video.js"></script><video id="' + req.params.infoHash + '" class="video-js vjs-default-skin" controls autoplay preload="auto" width="645" height="365" src="/torrents/' + req.params.infoHash + '/files/' + file +'"></video><script>videojs("' + req.params.infoHash + '", { "controls": true, "autoplay": true, "preload": "auto" });</script>')
+});
+
 api.all('/torrents/:infoHash/files/:path([^"]+)', function (req, res) {
   var torrent = store.get(req.params.infoHash), file;
 
