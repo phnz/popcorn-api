@@ -1,16 +1,5 @@
-<div class="header">
-  <ul class="nav nav-pills pull-right">
-    <li class="active"><a href="">Torrents</a></li>
-    <li>
-      <a href="https://github.com/asapach/peerflix-server" target="_blank">
-        <i class="fa fa-github"></i> About</a>
-    </li>
-  </ul>
-  <h3 class="text-muted text-nowrap"><img src="images/logo.svg" alt="logo" height="40"> peerflix server</h3>
-</div>
-
 <div class="jumbotron" ng-file-drop ng-file-change="upload($files)">
-  <h1>Stream Torrents</h1>
+  <h1>Torrent Cloud</h1>
   <div class="form-group">
     <div class="input-group">
       <span class="input-group-addon">torrent:</span>
@@ -51,38 +40,23 @@
         <div ng-class-even="'space'" ng-class-odd="'progress-bar progress-bar-success'"
              ng-repeat="progress in torrent.progress track by $index" ng-style="{ width: progress + '%' }"></div>
       </div>
-      <ul class="list-group">
-        <li class="list-group-item" ng-repeat="file in torrent.files">
-          <input type="checkbox" ng-model="file.selected" ng-click="select(torrent, file)"/>
-          <span class="fa fa-cloud-download"></span>
-          <a href="/torrents/{{ torrent.infoHash }}/files/{{ file.path | encodeUri }}" target="_blank">
-            {{ file.name }} ({{ file.length / 1024 / 1024 | number:1 }} MB)
-          </a>
-        </li>
-      </ul>
-      <ul class="list-group iframes">
+
+      <ul class="list-group iframes" style="margin-top:20px;">
         <li class="list-group-item">
-            <pre>&lt;iframe width="645px" height="365px" frameBorder="0" src="http://localhost:9000/iframe/{{ torrent.infoHash }}"&gt;</iframe></pre>
+            <pre>&lt;iframe width="645px" height="365px" frameBorder="0" src="https://my.video/iframe/{{ torrent.infoHash }}"&gt;</iframe></pre>
 
         </li>
       </ul>
     </div>
     <div class="panel-footer">
       <ul class="list-unstyled list-inline">
-        <li class="text-nowrap">
-          <button type="button" class="btn btn-xs" ng-click="pause(torrent)">
-            <span class="fa {{ torrent.stats.paused ? 'fa-play' : 'fa-pause' }}"></span>
-          </button>
-        </li>
         <li class="text-nowrap" ng-show="torrent.stats">
           <strong>Speed:</strong>
-          <span class="label label-success">{{ torrent.stats.speed.down / 1024 | number:1 }}</span> /
-          <span class="label label-danger">{{ torrent.stats.speed.up / 1024 | number:1 }}</span> KB/s
+          <span class="label label-success">{{ torrent.stats.speed.down / 1024 | number:1 }}</span>
         </li>
         <li class="text-nowrap" ng-show="torrent.stats">
           <strong>Traffic:</strong>
-          <span class="label label-success">{{ torrent.stats.traffic.down / 1024 / 1024 | number:1 }}</span> /
-          <span class="label label-danger">{{ torrent.stats.traffic.up / 1024 / 1024 | number:1 }}</span> MB
+          <span class="label label-success">{{ torrent.stats.traffic.down / 1024 / 1024 | number:1 }}</span>
         </li>
         <li class="text-nowrap" ng-show="torrent.stats">
           <strong>Peers:</strong>
@@ -96,8 +70,4 @@
       </ul>
     </div>
   </div>
-</div>
-
-<div class="footer">
-  <p><span class="fa fa-heart"></span> peerflix</p>
 </div>

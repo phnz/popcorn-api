@@ -19,6 +19,8 @@ angular.module('peerflixServerApp')
         } else {
           $scope.torrents.unshift(torrent);
         }
+
+        $scope.selectFirst(hash);
         return torrent;
       });
     }
@@ -64,6 +66,10 @@ angular.module('peerflixServerApp')
 
     $scope.select = function (torrent, file) {
       torrentSocket.emit(file.selected ? 'deselect' : 'select', torrent.infoHash, torrent.files.indexOf(file));
+    };
+
+    $scope.selectFirst = function (hash) {
+      torrentSocket.emit('select', hash, 0);
     };
 
     $scope.remove = function (torrent) {
