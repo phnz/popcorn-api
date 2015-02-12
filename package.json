@@ -1,38 +1,28 @@
 {
-  "name": "peerflix-server",
-  "version": "0.0.20",
-  "author": "Aliaksei Sapach <dreamsonic@tut.by>",
-  "description": "Streaming torrent client for node.js with web ui.",
+  "name": "popcorn-api",
+  "version": "0.0.1",
+  "author": "",
+  "description": "",
   "bin": {
     "peerflix-server": "./server/bin.js"
   },
   "scripts": {
-    "start": "node ./server/bin.js",
-    "test": "grunt test"
+    "start": "node ./server/bin.js"
   },
   "main": "./server/bin.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/asapach/peerflix-server.git"
+    "url": ""
   },
-  "keywords": [
-    "bittorrent",
-    "torrent",
-    "stream",
-    "peerflix",
-    "server",
-    "web"
-  ],
   "dependencies": {
     "connect-multiparty": "^1.2.5",
     "express": "~3.5.1",
-    "fluent-ffmpeg": "^2.0.0-rc3",
     "lodash": "~2.4.1",
     "mkdirp": "~0.5.0",
+    "mongoose": "^3.8.23",
     "pump": "~0.3.2",
     "range-parser": "~1.0.0",
     "read-torrent": "~1.0.0",
-    "socket.io": "~0.9.17",
     "torrent-stream": "~0.13.3"
   },
   "devDependencies": {

@@ -1,38 +1,49 @@
 'use strict';
 
-var fs = require('fs'),
-  path = require('path'),
-  events = require('events'),
-  _ = require('lodash'),
-  mkdirp = require('mkdirp'),
-  readTorrent = require('read-torrent'),
-  engine = require('./engine'),
-  homePath = process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'],
-  configPath = path.join(homePath, '.config', 'peerflix-server'),
-  configFile = path.join(configPath, 'config.json'),
-  storageFile = path.join(configPath, 'torrents.json'),
-  torrents = {},
-  options = {};
+var mongoose = require('mongoose');
+var config = require('../config');
+var events = require('events');
+var readTorrent = require('read-torrent');
+var engine = require('./engine');
+var _ = require('lodash');
+var torrents = {};
+var options = {};
 
-function save() {
-  mkdirp(configPath, function (err) {
-    if (err) {
-      throw err;
-    }
-    var state = Object.keys(torrents).map(function (infoHash) {
-      return infoHash;
-    });
-    fs.writeFile(storageFile, JSON.stringify(state), function (err) {
-      if (err) {
-        throw err;
-      }
-      console.log('current state saved');
-    });
-  });
-}
+RegExp.escape = function(text) {
+	return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+};
 
-var store = _.extend(new events.EventEmitter(), {
-  add: function (link, callback) {
+var File = mongoose.model('File', {
+    imdb: String,
+    hash: String,
+    ready: String,
+    complete: String,
+    name: String
+});
+
+mongoose.connect('mongodb://' + config.dbHosts.join(',') + '/production', {
+	db: { native_parser: true },
+	replset: {
+		rs_name: 'pt0',
+		connectWithNoPrimary: true,
+		readPreference: 'nearest',
+		strategy: 'ping',
+		socketOptions: {
+			keepAlive: 1
+		}
+	},
+	server: {
+		readPreference: 'nearest',
+		strategy: 'ping',
+		socketOptions: {
+			keepAlive: 1
+		}
+	}
+});
+
+module.exports = _.extend(new events.EventEmitter(), {
+
+  add: function (imdb_id, link, callback) {
     readTorrent(link, function (err, torrent) {
       if (err) {
         return callback(err);
@@ -42,70 +53,94 @@ var store = _.extend(new events.EventEmitter(), {
         return infoHash;
       }
 
-      console.log('adding ' + infoHash);
+      // maybe it exist ?
+      var query  = File.where({ hash: infoHash });
+      query.findOne({hash: infoHash}, function (err, torrentFile) {
+            if (torrentFile) {
+                callback(null, infoHash);
+            } else {
+                 console.log('adding ' + infoHash);
 
-      var e = engine(torrent, options);
-      store.emit('torrent', infoHash, e);
-      torrents[infoHash] = e;
-      save();
-      callback(null, infoHash);
+                 var e = engine(torrent, options);
+                 e.on('ready', function() {
+                   // auto select 1st file
+                   if (e && e.files) {
+
+                     var movieFile = e.files[0];
+                     movieFile.select();
+
+                     if (e.files[1]) {
+                         var movieImg = e.files[1];
+                         movieImg.deselect();
+                     }
+                   }
+
+                   var file = new File({
+                         imdb: imdb_id,
+                         hash: torrent.infoHash,
+                         ready: false,
+                         complete: false,
+                         name: torrent.name
+                   });
+
+                   file.save(function (err) {
+                     torrents[infoHash] = e;
+                     callback(null, infoHash);
+                   });
+                 })
+
+
+            }
+      });
+
     });
   },
-  get: function (infoHash) {
-    return torrents[infoHash];
+
+  get: function (infoHash, callback) {
+    var self = this;
+    var query  = File.where({ hash: infoHash });
+    query.findOne({hash: infoHash}, function (err, torrentFile) {
+      if (err) callback(false, false);
+      // load torrent with peerflix
+      self.load(infoHash, function() {
+        return callback(torrentFile, torrents[infoHash]);
+      });
+
+    });
   },
+
   remove: function (infoHash) {
-    var torrent = torrents[infoHash];
-    torrent.destroy();
-    torrent.remove(function () {
-      torrent.emit('destroyed');
-    });
-    delete torrents[infoHash];
-    save();
-  },
-  list: function () {
-    return Object.keys(torrents).map(function (infoHash) {
-      return torrents[infoHash];
-    });
-  },
-  load: function (infoHash) {
-    console.log('loading ' + infoHash);
-    var e = engine('magnet:?xt=urn:btih:' + infoHash, options); // TODO
-    store.emit('torrent', infoHash, e);
-    torrents[infoHash] = e;
-  }
-});
 
-mkdirp(configPath, function (err) {
-  if (err) {
-    throw err;
-  }
-  fs.readFile(configFile, function (err, data) {
-    if (err) {
-      if (err.code !== 'ENOENT') {
-        throw err;
-      }
+    // make sure torrent is initialized
+    this.load(infoHash, function() {
+        var torrent = torrents[infoHash];
+        torrent.destroy();
+        torrent.remove(function () {
+          torrent.emit('destroyed');
+        });
+        delete torrents[infoHash];
+        File.remove({ hash: infoHash }, function(err) {
+            return;
+        });
+    });
+
+  },
+
+  load: function (infoHash, callback) {
+
+    if (!torrents[infoHash]) {
+      console.log('loading ' + infoHash);
+      var e = engine('magnet:?xt=urn:btih:' + infoHash, options); // TODO
+      torrents[infoHash] = e;
+      e.on('ready', function() {
+        callback();
+      })
+
     } else {
-      options = JSON.parse(data);
-      console.log('options: ' + JSON.stringify(options));
+      callback();
     }
 
-    fs.readFile(storageFile, function (err, data) {
-      if (err) {
-        if (err.code === 'ENOENT') {
-          console.log('previous state not found');
-        } else {
-          throw err;
-        }
-      } else {
-        var torrents = JSON.parse(data);
-        console.log('resuming from previous state');
-        torrents.forEach(function (infoHash) {
-          store.load(infoHash);
-        });
-      }
-    });
-  });
+  }
 });
 
 function shutdown(signal) {
@@ -133,5 +168,3 @@ process.on('SIGTERM', function () {
 process.on('SIGINT', function () {
   shutdown('SIGINT');
 });
-
-module.exports = store;

@@ -29,6 +29,11 @@ module.exports = function (torrent, opts) {
     console.log('error ' + engine.infoHash + ': ' + e);
   });
 
+  engine.on('download', function (e) {
+    console.log('download ' + engine.infoHash + ': ' + e);
+  });
+
+
   engine.once('destroyed', function () {
     console.log('destroyed ' + engine.infoHash);
     engine.removeAllListeners();
